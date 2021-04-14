@@ -42,7 +42,6 @@ string loadVariable(string s){
 }
 void printStatement(string s){
 	// islemler
-	expression(s);
 	string variableName = expression(s);
 	outfile << "call i32 (i8*, ...)* @printf(i8* getelementptr ([4 x i8]* @print.str, i32 0, i32 0), i32 "<< variableName <<" )"<< endl;
 }
@@ -191,7 +190,7 @@ int main(int argc, char const *argv[]) {
 		} else if(line.find('if')!= string::npos) {  //cond da statement hesapla 
 
 		} else if(line.find('=')!= string::npos) {   // sağı hesapla sola koy
-
+			assigment(line);
 		} else if(line.find('choose')!= string::npos) {   // içinde statementlar var onları hesapla3 tane if koy
 
 		}
