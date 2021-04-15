@@ -115,9 +115,17 @@ string expression(string expr) {
 	stack<string> waitList;
 	// postfixe çevirme
 	for(int i=0; i<expr.length(); i++){
-
+		
 	}
     // postfix oldu
+
+    if(postfixVersion.size() == 1) {     // expression sadece 1 variablesa
+    	string token = postfixVersion.top();
+    	postfixVersion.pop();
+    	string result = handleVariable(token);
+    	return result;
+    }
+   
    	while(!postfixVersion.empty()){
 
    		string token = postfixVersion.top();
