@@ -56,6 +56,7 @@ void storeVariable(string target, string value){
 	outfile << "store i32 " << value << ", i32* " << target << endl;
 }
 void allocateVariable(string s) {
+	variables.insert(s);
 	outfile << s << " = alloca i32" << endl;
 	storeVariable(s, "0");
 }
@@ -76,9 +77,8 @@ void assigment(string line){
 		
 	// yoksa allocate et 
 	string leftVariableName = "%" + left;
-	if(exists(leftVariableName)) {
+	if(!exists(leftVariableName)) {
 		allocateVariable(leftVariableName);
-		variables.insert(leftVariableName);
 	} 
 	// sağ tarafı hesapla
 	string rightVariableName = expression(right);
