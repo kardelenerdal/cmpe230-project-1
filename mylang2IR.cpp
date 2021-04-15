@@ -99,7 +99,7 @@ string handleVariable(string var){
    			vartemp = var;
    	} else if(isVariable(var)){
    		// daha once varsa load et yoksa allocate et
-	   	if(exists(var)){
+	   	if(exists("%"+var)){
 	   			vartemp = loadVariable("%"+var);
 	   	} else {
 	   		allocateVariable("%"+var);
