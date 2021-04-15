@@ -113,12 +113,10 @@ string expression(string expr) {
 
 	stack<string> postfixVersion;
 	stack<string> waitList;
-
 	// postfixe çevirme
 	for(int i=0; i<expr.length(); i++){
 
 	}
-
     // postfix oldu
    	while(!postfixVersion.empty()){
 
@@ -167,6 +165,7 @@ string expression(string expr) {
 
    		}
    	}
+   	
    	return waitList.top();
 }
 
@@ -194,7 +193,9 @@ int main(int argc, char const *argv[]) {
 		// one line
 		if(line.find("print")!= string::npos) { // içinde statement ya da choose varsa hesapla yoksa direkt yaz 
 
-			string exprToPrint = line.substr(line.find("print")+6, line.length()-1);
+			string exprToPrint = line.substr(line.find("print")+6);
+			exprToPrint = exprToPrint.substr(0, exprToPrint.length()-1);
+			//cout << exprToPrint << endl;
 			printStatement(exprToPrint);
 
 		} else if(line.find("while")!= string::npos) {  //cond da statement hesapla
