@@ -63,6 +63,7 @@ void allocateVariable(string s) {
 string loadVariable(string s){
 	string tempVariableName = "%t" + to_string(nofTempVariables);
 	outfile << tempVariableName << " = load i32* " << s << endl;
+	tempVariableName++;
 	return tempVariableName;
 }
 
