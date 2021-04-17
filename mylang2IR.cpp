@@ -77,10 +77,6 @@ int preced(char ch) {
 
 std::vector<std::string> expressionParser(bool equal){  
 
-    std::stringstream test(postfix);    // postfix'i space karakterinden sonra parçalamak için kullanılan değişkenler.
-    std::string segment;
-    std::vector<std::string> seglist;  
-
     char str[] = "a00 a11 = (d *((d2 - d3)))";
     char delim[] = " ";
     char *token = strtok(str,delim);
@@ -101,11 +97,16 @@ std::vector<std::string> expressionParser(bool equal){
         }
         token = strtok(NULL,delim);
     }
-    seglist.push_back(leftSide);  		// leftSide değişkenini return edeceğimiz vector'ün 0. indexine koyduk. 
-					       //  handleVariable() (bu işi expression da halledelim?) 
+    
     
     string postfix = inToPost(rightSide); 
     
+    std::stringstream test(postfix);    // postfix'i space karakterinden sonra parçalamak için kullanılan değişkenler.
+    std::string segment;
+    std::vector<std::string> seglist;  	
+	
+    seglist.push_back(leftSide);  		// leftSide değişkenini return edeceğimiz vector'ün 0. indexine koyduk. 
+					       //  handleVariable() (bu işi expression da halledelim?) 	
     while(std::getline(test, segment, ' '))  // vector'ün içine postfixteki(rightSide) elemanları atıyor.
     {
         if(segment != ""){
