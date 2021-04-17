@@ -4,15 +4,117 @@
 #include <set>
 #include <stack>
 #include <locale>
+#include <cstring>
+#include <vector>
+#include <sstream>
 using namespace std;
 
 int nofTempVariables = 1;
 int nofConditions = 1;
+
 string line;
 set<string> variables;
 ifstream infile;            
 ofstream outfile;
 
+string inToPost(string infix ) {
+   stack<char> stk;
+   stk.push('#');               //add some extra character to avoid underflow
+   string postfix = "";         //initially the postfix string is empty
+   string::iterator it;
+
+   for(it = infix.begin(); it!=infix.end(); it++) {
+      if(*it == ' '){
+          postfix += " ";
+          continue;
+      }
+      if(isalnum(char(*it))){
+         postfix += *it;      //add to postfix when character is letter or number
+      }else if(*it == '(')
+         stk.push('(');
+      else if(*it == '^')
+         stk.push('^');
+      else if(*it == ')') {
+         while(stk.top() != '#' && stk.top() != '(') {
+              postfix += " ";
+            postfix += stk.top(); //store and pop until ( has found
+            stk.pop();
+         }
+         stk.pop();          //remove the '(' from stack
+      }else {
+         if(preced(*it) > preced(stk.top()))
+            stk.push(*it); //push if precedence is high
+         else {
+            while(stk.top() != '#' && preced(*it) <= preced(stk.top())) {
+               postfix += stk.top();        //store and pop until higher precedence is found
+               stk.pop();
+            }
+            stk.push(*it);
+         }
+      }
+   }
+
+   while(stk.top() != '#') {
+      postfix += stk.top();        //store and pop until stack is not empty.
+      postfix += " ";    
+      stk.pop();
+   }
+
+   return postfix;
+}
+
+int preced(char ch) {
+   if(ch == '+' || ch == '-') {
+      return 1;              //Precedence of + or - is 1
+   }else if(ch == '*' || ch == '/') {
+      return 2;            //Precedence of * or / is 2
+   }else if(ch == '^') {
+      return 3;            //Precedence of ^ is 3
+   }else {
+      return 0;
+   }
+}
+
+std::vector<std::string> expressionParser(bool equal){  
+
+    std::stringstream test(postfix);    // postfix'i space karakterinden sonra parçalamak için kullanılan değişkenler.
+    std::string segment;
+    std::vector<std::string> seglist;  
+
+    char str[] = "a00 a11 = (d *((d2 - d3)))";
+    char delim[] = " ";
+    char *token = strtok(str,delim);
+    //bool equal = false; equal variable'ını parametre olarak aldık, eğer printse bu değer true olarak gelecek ve sol tarafı hesaplamamamıza gerek kalmayacak. Diğer türlü durumda false gelecek.
+    
+    string leftSide = "";
+    string rightSide = "";
+
+    while (token)
+    {
+        if(strcmp(token, "=") == 0){
+            equal = true;
+        }else if(equal == false){
+            leftSide = token; 
+        }else if(equal == true){
+            rightSide += token;
+            rightSide += " ";
+        }
+        token = strtok(NULL,delim);
+    }
+    seglist.push_back(leftSide);  		// leftSide değişkenini return edeceğimiz vector'ün 0. indexine koyduk. 
+					       //  handleVariable() (bu işi expression da halledelim?) 
+    
+    string postfix = inToPost(rightSide); 
+    
+    while(std::getline(test, segment, ' '))  // vector'ün içine postfixteki(rightSide) elemanları atıyor.
+    {
+        if(segment != ""){
+            seglist.push_back(segment);
+        }        
+    }
+    
+    return seglist;
+}
 
 void condition(string expres){
 	// nofTempVar ? 
