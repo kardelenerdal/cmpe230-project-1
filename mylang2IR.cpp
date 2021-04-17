@@ -7,10 +7,23 @@
 using namespace std;
 
 int nofTempVariables = 1;
+int nofConditions = 1;
 string line;
 set<string> variables;
 ifstream infile;            
 ofstream outfile;
+
+
+void condition(string expres){
+	// nofTempVar ? 
+	outfile << nofConditions << "cond:" << endl;
+	string condtionTemp = expression(expres);
+       	outfile << "%t" << nofTempVariables << " = icmp ne i32 " << conditionTemp  << ", 0" << endl;				// %t2 = icmp ne i32 %t1, 0
+	outfile << "br i1 %t" << nofTempVariables << ", label %" << nofConditions << "body, label %" << nofConditions << "end" << endl;  
+        nofTempVariables++;	
+	//br i1 %t2, label %whbody, label %whend
+	outfile << nofConditions << "body:" << endl;	 //whbody:
+}
 
 string expression(string expr);
 // bu variable daha once tanımlanmış mı
@@ -63,7 +76,6 @@ void allocateVariable(string s) {
 string loadVariable(string s){
 	string tempVariableName = "%t" + to_string(nofTempVariables);
 	outfile << tempVariableName << " = load i32* " << s << endl;
-	tempVariableName++;
 	return tempVariableName;
 }
 
@@ -116,7 +128,7 @@ string expression(string expr) {
 	stack<string> waitList;
 	// postfixe çevirme
 	for(int i=0; i<expr.length(); i++){
-		
+			
 	}
     // postfix oldu
 
@@ -150,7 +162,7 @@ string expression(string expr) {
 
    			if(token == "+"){
 
-   				string resultName = "%t" + nofTempVariables;
+   				string resultName = "%t" + nofTempVariables;						//nofTempVar nerde increment oluyor?
    				outfile << resultName << " = add i32 " << var2temp << ", " << var1temp;
    				waitList.push(resultName);
 
@@ -185,7 +197,10 @@ void printStatement(string s){
 }
 
 int main(int argc, char const *argv[]) {
-		                     
+
+	bool isCondition = false;
+	bool isIf = false;	
+	
 	infile.open(argv[1]);
 	outfile.open(argv[2]);
 
@@ -207,14 +222,28 @@ int main(int argc, char const *argv[]) {
 			//cout << exprToPrint << endl;
 			printStatement(exprToPrint);
 
-		} else if(line.find("while")!= string::npos) {  //cond da statement hesapla
-
-		} else if(line.find("if")!= string::npos) {  //cond da statement hesapla 
+		} else if(line.find("while")!= string::npos && isCondition = false) {  //cond da statement hesapla
+			condition();	
+			isCondition = true;
+		
+		} else if(line.find("if")!= string::npos && isCondition = false) {  //cond da statement hesapla 
+			condition();	
+			isIf = true;
+			isCondition = true;
 
 		} else if(line.find('=')!= string::npos) {   // sağı hesapla sola koy
-			assigment(line);
-		} else if(line.find("choose")!= string::npos) {   // içinde statementlar var onları hesapla3 tane if koy
+			
+			assigment(line);	
 
+		}else if(line.find("}") != string::npos && isCondition = true){
+			
+			if(!isIf){
+				outfile << "br label %" << nofConditions << "cond" << endl;	//br label %whcond
+			}
+			outfile << nofConditions << "end:" << endl;			//whend:
+			isCondition = false;	
+			isIf = false;
+			nofConditions++;
 		}
 
 	}
