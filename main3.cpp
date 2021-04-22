@@ -11,6 +11,7 @@ using namespace std;
 
 int nofTempVariables = 1;
 int nofConditions = 1;
+bool chooseExists = false;
 
 string line;
 set<string> variables;
@@ -104,8 +105,24 @@ string spaceCheck(string str){
     return str;	
 }
 
-std::vector<std::string> expressionParser(bool equal, string line){  
+// line = "a = choose(3,((4)),(a-5),6) + 6 + choose(0,1,2,3)"
+// parantez sayısı 0 iken ve ) gördüğüm zaman kapanma indexi
+// line = "a = %t8 + 6 + choose(0,1,2,3)"
+// parametleri çözüp
+// choose'u çağıran satırı yazdır
+string choose(string line){
+   
+}
 
+std::vector<std::string> expressionParser(bool equal, string line){  
+   // while choose varsa
+   // choose fonksiyonuna line'ı at
+   // line bana ilk choose u halletmiş bir şekilde yeni line'ı vercek
+   
+   // sonuç olarak choose suz yeni bir line'ım var 
+   // line = "a = choose(3,4,(a-5),6) + 6 + choose(0,1,2,3)"
+   // line = "a = %t8 + 6 + choose(0,1,2,3)"
+   // line = "a = %t8 + 6 + %t50"
     line = spaceCheck(line);
     int l = line.length();
     char str[l+1];
@@ -344,10 +361,11 @@ int main(int argc, char const *argv[]) {
   outfile << "; ModuleID = 'mylang2ir'" << endl;
   outfile << "declare i32 @printf(i8*, ...)" << endl;
   outfile << "@print.str = constant [4 x i8] c\"%d\\0A\\00\"" << endl;
+   // choose bloğu
+   // noftemp = 25 buna bak
   outfile << "define i32 @main() {" << endl;
 
   while(getline(infile, line)) {
-
 
     // one line or multiple line
     
