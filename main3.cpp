@@ -110,7 +110,11 @@ string spaceCheck(string str){
 // line = "a = %t8 + 6 + choose(0,1,2,3)"
 // parametleri çözüp çözülen parametlerden biri choose ise onu at choose'a sonra onu koy 
 // choose'u çağıran satırı yazdır
-string choose(string line){
+
+// line = " choose(choose(523), choose(), a, b) "
+// line = "choose("%t6", choose(), a,b)"
+// recline= "choose(523)" "%t6"
+string chooseFinder(string line){
    
 }
 
