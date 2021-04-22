@@ -108,12 +108,13 @@ string spaceCheck(string str){
 // line = "a = choose(3,((4)),(a-5),6) + 6 + choose(0,1,2,3)"
 // parantez sayısı 0 iken ve ) gördüğüm zaman kapanma indexi
 // line = "a = %t8 + 6 + choose(0,1,2,3)"
-// parametleri çözüp
+// parametleri çözüp çözülen parametlerden biri choose ise onu at choose'a sonra onu koy 
 // choose'u çağıran satırı yazdır
 string choose(string line){
    
 }
 
+// // choose(0,1,2,3) + 5
 std::vector<std::string> expressionParser(bool equal, string line){  
    // while choose varsa
    // choose fonksiyonuna line'ı at
@@ -167,11 +168,13 @@ std::vector<std::string> expressionParser(bool equal, string line){
     return seglist;
 }
 
+// choose(0,1,2,3) + 5
 void condition(string expres){
   // nofTempVar ? 
   outfile << "br label %" << "cond" << nofConditions << endl;
   outfile << "cond" << nofConditions << ":" << endl;
   string conditionTemp = expression(false, expres);
+   // conditiontemp = %t7
   outfile << "%t" << nofTempVariables << " = icmp ne i32 " << conditionTemp  << ", 0" << endl;        // %t2 = icmp ne i32 %t1, 0
   outfile << "br i1 %t" << nofTempVariables << ", label %body" << nofConditions << ", label %end" << nofConditions << endl;  
   nofTempVariables++; 
@@ -240,10 +243,6 @@ void assignment(string leftName, string value){
 
 }
 
-//chooseFunction();
-//whileStatement();
-//ifStatement();
-
 // variable varsa load et yoksa allocate et numbersa ya da tempse bişey yapma
 string handleVariable(string var){
   string vartemp = "";
@@ -261,13 +260,14 @@ string handleVariable(string var){
     return vartemp;
 }
 
+// choose(0,1,2,3) + 5
 string expression(bool equal, string expr) {
   // equal true ise gelen line'da = var ve assignment yapıyor, false ise = yok
   // expr = a+2*x/(5-z)+(2/y)
   vector<string> postfixVector = expressionParser(!equal, expr);
   stack<string> postfixVersion;
   stack<string> waitList;
-
+   // %t6 + 5
   // postfixe çevirme
   for(int i=postfixVector.size()-1; i>0; i--) {   // ilk indexi almadım çünkü o left variable
       postfixVersion.push(postfixVector[i]);
@@ -386,10 +386,11 @@ int main(int argc, char const *argv[]) {
       isCondition = true;
     
     } else if(line.find("if")!= string::npos && isCondition == false) {  //cond da statement hesapla 
-      
+      // if( choose(0,1,2,3) + 5)
       int startIndex = line.find("(") + 1;
       int endIndex = line.find_last_of(")");
       string exprToCheck = line.substr(startIndex, endIndex - startIndex);
+       // choose(0,1,2,3) + 5
       condition(exprToCheck); 
       isIf = true;
       isCondition = true;
