@@ -1,0 +1,22 @@
+
+// "choose(1, choose(1234), 2, 4) = %t8
+
+chooseFinder(str line){
+ a = 1
+ b = choose(1234)
+ c = 2
+ d = 4
+
+ if(b choosesa){
+	b = chooseFinder("b");
+ }
+
+  %1 = alloca i32, align 4
+  %2 = alloca i32, align 4
+  store i32 0, i32* %1, align 4
+  %3 = call i32 @choose(i32 0, i32 1, i32 2, i32 3)
+  store i32 %3, i32* %2, align 4
+  ret i32 0
+
+}
+
