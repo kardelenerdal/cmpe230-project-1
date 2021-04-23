@@ -20,7 +20,8 @@ fstream afterAllocation;
 int preced(char ch);
 string expression(bool equal, string expr);
 
-string inToPost(string infix ) {
+string inToPost(string infix) {
+  // cout <<"infix" <<infix <<endl;
    stack<char> stk;
    stk.push('#');               //add some extra character to avoid underflow
    string postfix = "";         //initially the postfix string is empty
@@ -49,6 +50,7 @@ string inToPost(string infix ) {
             stk.push(*it); //push if precedence is high
          else {
             while(stk.top() != '#' && preced(*it) <= preced(stk.top())) {
+              postfix += " ";
                postfix += stk.top();        //store and pop until higher precedence is found
                stk.pop();
             }
@@ -62,7 +64,7 @@ string inToPost(string infix ) {
       postfix += " ";    
       stk.pop();
    }
-   //cout << postfix << endl;
+   //cout <<"postfix "<< postfix << endl;
    return postfix;
 }
 
@@ -136,26 +138,28 @@ std::vector<std::string> expressionParser(bool equal, string line){
     char delim[] = " ";
     char *token = strtok(str, delim);
     //bool equal = false; equal variable'ını parametre olarak aldık, eğer printse bu değer true olarak gelecek ve sol tarafı hesaplamamamıza gerek kalmayacak. Diğer türlü durumda false gelecek.
-    
+   // cout <<"equal "<<equal<<endl;
     string leftSide = "";
     string rightSide = "";
-
-    while (token)
-    {
-      //cout << token << endl;
+    while (token) {
+      //cout << token<< " token"<< endl;
         if(strcmp(token, "=") == 0){
             equal = true;
         }else if(equal == false){
             leftSide = token; 
-        }else if(equal == true){
+        }else if(equal == true && token != " "){
+         // cout << token <<" token"<< endl;
             rightSide += token;
             rightSide += " ";
+           // cout << rightSide <<" right side"<< endl;
         }
         token = strtok(NULL,delim);
     }
-    //cout << rightSide << endl;
+   // cout << "ls "<< leftSide <<endl;
+    //cout  << rightSide << endl;
     
-    string postfix = inToPost(rightSide); 
+    string postfix = inToPost(rightSide);
+    //cout << postfix << endl; 
     //cout << postfix << endl;
     std::stringstream test(postfix);    // postfix'i space karakterinden sonra parçalamak için kullanılan değişkenler.
     std::string segment;
@@ -243,6 +247,7 @@ void assignment(string leftName, string value){
     allocateVariable(leftVariableName);
   } 
   // sola koy (store et)
+ // cout << "storelama"<< value <<endl;
   storeVariable(leftVariableName, value); 
 
 }
@@ -255,6 +260,7 @@ string handleVariable(string var){
     } else if(isVariable(var)){
       // daha once varsa load et yoksa allocate et
       if(exists("%"+var)){
+        //cout << "loadlama"<< var << endl;
           vartemp = loadVariable("%"+var);
       } else {
         allocateVariable("%"+var);
@@ -277,11 +283,12 @@ string expression(bool equal, string expr) {
       postfixVersion.push(postfixVector[i]);
   }
   // postfixVersion = a2x*5z-/+2y/+  a'dan başlarayak çıkıcak.
-
+  
     if(postfixVersion.size() == 1) {     // expression sadece 1 variablesa
       string token = postfixVersion.top();
       postfixVersion.pop();
       string result = handleVariable(token);
+      //cout << "token" <<result <<endl;
       // assignment
       if (equal) {
         assignment(postfixVector[0], result);
@@ -295,7 +302,7 @@ string expression(bool equal, string expr) {
       postfixVersion.pop();
 
       if(isVariable(token) || isNumber(token)){
-        
+      //cout << "variable"<<token<<endl;
         waitList.push(token);
 
       } else if(isOperator(token)){
@@ -325,10 +332,11 @@ string expression(bool equal, string expr) {
         } else if(token == "/"){
           
           string resultName = "%t" + to_string(nofTempVariables);
-          afterAllocation << resultName << " = udiv i32 " << var2temp << ", " << var1temp << endl;
+          afterAllocation << resultName << " = sdiv i32 " << var2temp << ", " << var1temp << endl;
           waitList.push(resultName);
 
         } else if(token == "*"){
+
           string resultName = "%t" + to_string(nofTempVariables);
           afterAllocation << resultName << " = mul i32 " << var1temp << ", " << var2temp << endl;
           waitList.push(resultName);
@@ -341,7 +349,9 @@ string expression(bool equal, string expr) {
     
     // assignment yapıyor
     if (equal) {
-      assignment(postfixVector[0], waitList.top());
+      string result = handleVariable(waitList.top());
+      assignment(postfixVector[0], result);
+      //cout << "token" <<waitList.top() <<endl;
     }
 
     return waitList.top();
@@ -371,9 +381,13 @@ int main(int argc, char const *argv[]) {
 
   while(getline(infile, line)) {
 
-    // one line or multiple line
+   // comment
+    if(line.find("#") != string::npos){
+      int commentIndex = line.find("#");
+      line = line.substr(0,commentIndex);
+    }
     
-    // one line
+  
     if(line.find("print")!= string::npos) { // içinde statement ya da choose varsa hesapla yoksa direkt yaz 
 
       int startIndex = line.find("print") + 6;
@@ -400,7 +414,7 @@ int main(int argc, char const *argv[]) {
       isCondition = true;
 
     } else if(line.find('=')!= string::npos) {   // sağı hesapla sola koy
-      
+     
       expression(true, line);  
 
     }else if(line.find("}") != string::npos && isCondition == true){
