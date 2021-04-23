@@ -363,6 +363,29 @@ void printStatement(string s){
   afterAllocation << "call i32 (i8*, ...)* @printf(i8* getelementptr ([4 x i8]* @print.str, i32 0, i32 0), i32 " << variableName << " )" << endl;
 }
 
+string fixLine(string line){
+  
+  if(line.find("#") != string::npos){
+      int commentIndex = line.find("#");
+      line = line.substr(0,commentIndex);
+  }
+  int startOfLine = 0;
+  int endOfLine = 0;
+  for (int i=0; i<line.length(); i++) {
+        if (!isspace(line[i])){
+          break;
+        } 
+        startOfLine++;
+  }
+   for (int i=line.length()-1; i>=0; i--) {
+        if (!isspace(line[i])){
+          break;
+        }
+        endOfLine = i;
+    }
+  return line.substr(startOfLine, endOfLine - startOfLine);
+}
+
 int main(int argc, char const *argv[]) {
 
   bool isCondition = false;
@@ -381,13 +404,9 @@ int main(int argc, char const *argv[]) {
 
   while(getline(infile, line)) {
 
-   // comment
-    if(line.find("#") != string::npos){
-      int commentIndex = line.find("#");
-      line = line.substr(0,commentIndex);
-    }
+   // comment and spaces bunda errorlara da bakabiliriz
+    line = fixLine(line);
     
-  
     if(line.find("print")!= string::npos) { // içinde statement ya da choose varsa hesapla yoksa direkt yaz 
 
       int startIndex = line.find("print") + 6;
