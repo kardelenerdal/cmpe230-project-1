@@ -5,18 +5,17 @@
 #include <stack>
 #include <locale>
 #include <cstring>
-#include <vector>
 #include <sstream>
 using namespace std;
 
 int nofTempVariables = 1;
 int nofConditions = 1;
-bool chooseExists = false;
 
 string line;
 set<string> variables;
 ifstream infile;            
 ofstream outfile;
+fstream afterAllocation;
 
 int preced(char ch);
 string expression(bool equal, string expr);
@@ -95,14 +94,14 @@ string spaceCheck(string str){
         ss << mychar;
         ss >> target;
 
-        if(isOperator(target)){
+        if(isOperator(target) || target == "="){
             str.insert(i+1, " ");
             str.insert(i, " ");
             i += 2;
             len += 2;
         }
     }
-    return str;	
+    return str; 
 }
 
 // line = "a = choose(3,((4)),(a-5),6) + 6 + choose(0,1,2,3)"
@@ -129,6 +128,7 @@ std::vector<std::string> expressionParser(bool equal, string line){
    // line = "a = %t8 + 6 + choose(0,1,2,3)"
    // line = "a = %t8 + 6 + %t50"
     line = spaceCheck(line);
+    
     int l = line.length();
     char str[l+1];
     strcpy(str, line.c_str());
@@ -175,15 +175,15 @@ std::vector<std::string> expressionParser(bool equal, string line){
 // choose(0,1,2,3) + 5
 void condition(string expres){
   // nofTempVar ? 
-  outfile << "br label %" << "cond" << nofConditions << endl;
-  outfile << "cond" << nofConditions << ":" << endl;
+  afterAllocation << "br label %" << "cond" << nofConditions << endl;
+  afterAllocation << "cond" << nofConditions << ":" << endl;
   string conditionTemp = expression(false, expres);
    // conditiontemp = %t7
-  outfile << "%t" << nofTempVariables << " = icmp ne i32 " << conditionTemp  << ", 0" << endl;        // %t2 = icmp ne i32 %t1, 0
-  outfile << "br i1 %t" << nofTempVariables << ", label %body" << nofConditions << ", label %end" << nofConditions << endl;  
+  afterAllocation << "%t" << nofTempVariables << " = icmp ne i32 " << conditionTemp  << ", 0" << endl;        // %t2 = icmp ne i32 %t1, 0
+  afterAllocation << "br i1 %t" << nofTempVariables << ", label %body" << nofConditions << ", label %end" << nofConditions << endl;  
   nofTempVariables++; 
   //br i1 %t2, label %whbody, label %whend
-  outfile << "body" << nofConditions << ":" << endl;   //whbody:
+  afterAllocation << "body" << nofConditions << ":" << endl;   //whbody:
 }
 
 // bu variable daha once tanımlanmış mı
@@ -219,16 +219,16 @@ bool isVariable(string str){
 }
 
 void storeVariable(string target, string value){
-  outfile << "store i32 " << value << ", i32* " << target << endl;
+  afterAllocation << "store i32 " << value << ", i32* " << target << endl;
 }
 void allocateVariable(string s) {
   variables.insert(s);
   outfile << s << " = alloca i32" << endl;
-  storeVariable(s, "0");
+  outfile << "store i32 " << 0 << ", i32* " << s << endl;
 }
 string loadVariable(string s){
   string tempVariableName = "%t" + to_string(nofTempVariables);
-  outfile << tempVariableName << " = load i32* " << s << endl;
+  afterAllocation << tempVariableName << " = load i32* " << s << endl;
   nofTempVariables++;
   return tempVariableName;
 }
@@ -313,25 +313,24 @@ string expression(bool equal, string expr) {
         if(token == "+"){
 
           string resultName = "%t" + to_string(nofTempVariables);            //nofTempVar nerde increment oluyor?
-           cout << resultName << endl;
-          outfile << resultName << " = add i32 " << var2temp << ", " << var1temp << endl;
+          afterAllocation << resultName << " = add i32 " << var2temp << ", " << var1temp << endl;
           waitList.push(resultName);
 
         } else if(token == "-"){
 
           string resultName = "%t" + to_string(nofTempVariables);
-          outfile << resultName << " = sub i32 " << var2temp << ", " << var1temp << endl;
+          afterAllocation << resultName << " = sub i32 " << var2temp << ", " << var1temp << endl;
           waitList.push(resultName);
         
         } else if(token == "/"){
           
           string resultName = "%t" + to_string(nofTempVariables);
-          outfile << resultName << " = udiv i32 " << var2temp << ", " << var1temp << endl;
+          afterAllocation << resultName << " = udiv i32 " << var2temp << ", " << var1temp << endl;
           waitList.push(resultName);
 
         } else if(token == "*"){
           string resultName = "%t" + to_string(nofTempVariables);
-          outfile << resultName << " = mul i32 " << var1temp << ", " << var2temp << endl;
+          afterAllocation << resultName << " = mul i32 " << var1temp << ", " << var2temp << endl;
           waitList.push(resultName);
         }
         
@@ -351,7 +350,7 @@ string expression(bool equal, string expr) {
 void printStatement(string s){
   // islemler
   string variableName = expression(false, s);
-  outfile << "call i32 (i8*, ...)* @printf(i8* getelementptr ([4 x i8]* @print.str, i32 0, i32 0), i32 " << variableName << " )" << endl;
+  afterAllocation << "call i32 (i8*, ...)* @printf(i8* getelementptr ([4 x i8]* @print.str, i32 0, i32 0), i32 " << variableName << " )" << endl;
 }
 
 int main(int argc, char const *argv[]) {
@@ -361,6 +360,7 @@ int main(int argc, char const *argv[]) {
   
   infile.open(argv[1]);
   outfile.open(argv[2]);
+  afterAllocation.open("a.txt", ios::in | ios::out| ios::trunc);
 
   outfile << "; ModuleID = 'mylang2ir'" << endl;
   outfile << "declare i32 @printf(i8*, ...)" << endl;
@@ -406,18 +406,24 @@ int main(int argc, char const *argv[]) {
     }else if(line.find("}") != string::npos && isCondition == true){
       
       if(!isIf){
-        outfile << "br label %cond" << nofConditions << endl; //br label %whcond
+        afterAllocation << "br label %cond" << nofConditions << endl; //br label %whcond
       } else {
-        outfile << "br label %end" << nofConditions << endl;
+        afterAllocation << "br label %end" << nofConditions << endl;
       }
-      outfile << "end" << nofConditions << ":" << endl;     //whend:
+      afterAllocation << "end" << nofConditions << ":" << endl;     //whend:
       isCondition = false;  
       isIf = false;
       nofConditions++;
     }
 
   }
-
-  outfile << "ret i32 0" << endl;
-  outfile << "}" << endl;
+  string x;
+  afterAllocation << "ret i32 0" << endl;
+  afterAllocation << "}" << endl;
+  afterAllocation.seekg(0, ios::beg);
+  while(getline(afterAllocation, x)){
+    outfile << x << endl;
+  }
+  afterAllocation.clear();
+  afterAllocation.close();
 }
