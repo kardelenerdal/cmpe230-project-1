@@ -10,6 +10,7 @@ using namespace std;
 
 int nofTempVariables = 1;
 int nofConditions = 1;
+int nofLines = 0;
 
 string line;
 set<string> variables;
@@ -511,7 +512,7 @@ int main(int argc, char const *argv[]) {
   outfile << "define i32 @main() {" << endl;
 
   while(getline(infile, line)) {
-
+    nofLines++;
    // comment and spaces bunda errorlara da bakabiliriz
     line = fixLine(line);
   
