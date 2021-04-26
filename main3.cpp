@@ -369,7 +369,8 @@ string handleVariable(string var){
         allocateVariable("%"+var);
         vartemp = loadVariable("%"+var);
       }
-    }
+    }  
+  // else { error(); }
     return vartemp;
 }
 
