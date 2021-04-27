@@ -13,6 +13,7 @@ int nofConditions = 1;
 int nofLines = 0;
 
 string line;
+string outputFileName = "";
 set<string> variables;
 ifstream infile;            
 ofstream outfile;
@@ -22,7 +23,7 @@ int preced(char ch);
 string expression(bool equal, string expr);
 
 string inToPost(string infix) {
-  // cout <<"infix" <<infix <<endl;
+  
    stack<char> stk;
    stk.push('#');               //add some extra character to avoid underflow
    string postfix = "";         //initially the postfix string is empty
@@ -105,13 +106,23 @@ string spaceCheck(string str){
     }
     return str; 
 }
+
 void error(){
-//  outfile.open("test.txt", std::ofstream::out | std::ofstream::trunc);
-//  outfile << "error" << endl;
-// outfile.close();
-  cout << nofLines << " error" << endl;
+  
+  remove(outputFileName.c_str());
+  outfile.close();
+  outfile.open(outputFileName.c_str());
+  outfile << "; ModuleID = 'mylang2ir'" << endl;
+  outfile << "declare i32 @printf(i8*, ...)" << endl;
+  outfile << "@print.error = constant [24 x i8] c\"Line %d\\0A\\00 : syntax error\"" << endl;
+  outfile << "define i32 @main() {" << endl;
+  outfile << "call i32 (i8*, ...)* @printf(i8* getelementptr ([24 x i8]* @print.error, i32 0, i32 0), i32 "<< nofLines << " )"<< endl;
+  outfile << "ret i32 0" << endl;
+  outfile << "}" << endl;
   exit(0);
+
 }
+
 vector<string> chooseParser(string a){
   int len = 0;
     int realFirstIndex = 0;
@@ -166,11 +177,12 @@ vector<string> chooseParser(string a){
         firstIndex = virgulIndex + 1;
       }
     }
-    for(int i = 0; i < parList.size(); i++){
-        std::cout << parList[i] << std::endl;
-    }
+   // for(int i = 0; i < parList.size(); i++){
+    //    std::cout << parList[i] << std::endl;
+   // }
     if(parList.size() != 4){
-      outfile << "choose list" << endl;
+      //outfile << "choose list" << endl;
+       cout <<  "errork " << endl;
       error();
     }
     return parList;
@@ -224,18 +236,11 @@ std::vector<std::string> expressionParser(bool equal, string line){
         }
       }
     }
-    //cout << line<<endl;
     string result = line.substr(0, chooseFirstIndex) + " " + chooseName + " " + line.substr(chooseLastIndex+1);
-    //cout << result<<endl;
     line = result;
   }
 
-   // sonuç olarak choose suz yeni bir line'ım var 
-   // line = "a = choose(3,4,(a-5),6) + 6 + choose(0,1,2,3)"
-   // line = "a = %t8 + 6 + choose(0,1,2,3)"
-   // line = "a = %t8 + 6 + %t50"
     line = spaceCheck(line);
-    //cout << line << endl;
     int l = line.length();
     char str[l+1];
     strcpy(str, line.c_str());
@@ -247,23 +252,21 @@ std::vector<std::string> expressionParser(bool equal, string line){
     string rightSide = "";
     int leftSideCounter = 0;
     while (token) {
-      //cout << token<< " token"<< endl;
         if(strcmp(token, "=") == 0){
             equal = true;
         }else if(equal == false){
+            if(leftSideCounter != 0){
+              cout << "errorleft" <<endl;
+              error();                    // a b = abc
+            }
             leftSide = token;
             leftSideCounter++; 
         }else if(equal == true && token != " "){
-         // cout << token <<" token"<< endl;
             rightSide += token;
             rightSide += " ";
-           // cout << rightSide <<" right side"<< endl;
         }
         token = strtok(NULL,delim);
     }
-    //if(leftSideCounter != 1){
-    //  error();                    // a b = abc
-    //}
     
     string postfix = inToPost(rightSide);
     std::stringstream test(postfix);    // postfix'i space karakterinden sonra parçalamak için kullanılan değişkenler.
@@ -356,8 +359,9 @@ string handleVariable(string var){
       allocateVariable("%"+var);
       vartemp = loadVariable("%"+var);
     }
-  }else {
-  outfile << "iki operator" << endl;
+  } else {
+  // outfile << "iki operator" << endl;
+   cout <<  "errorf " << endl;
     error(); // iki operator gelme durumu
   }
     return vartemp;
@@ -369,13 +373,11 @@ string expression(bool equal, string expr) {
   stack<string> waitList;
   for(int i=postfixVector.size()-1; i>0; i--) {   // ilk indexi almadım çünkü o left variable
       postfixVersion.push(postfixVector[i]);
-      //cout << postfixVector[i]<<endl;
   }
     if(postfixVersion.size() == 1) {     // expression sadece 1 variablesa
       string token = postfixVersion.top();
       postfixVersion.pop();
       string result = handleVariable(token);
-      //cout << "token" <<result <<endl;
       // assignment
       if (equal) {
         assignment(postfixVector[0], result);
@@ -443,7 +445,11 @@ void printStatement(string s){
 }
 
 string fixLine(string line){
-  
+   if(line.find("#") != string::npos){
+      int commentIndex = line.find("#");
+      line = line.substr(0,commentIndex);
+    }
+
   int nofParanthesis = 0;
   for(int i = 0 ; i < line.length(); i++){
     if(string(1, line[i]) == "("){
@@ -453,13 +459,9 @@ string fixLine(string line){
     }
   }
   if(nofParanthesis != 0){
-  outfile << "parantez sayısı" << endl;
+    //outfile << "parantez sayısı" << endl;
+    cout <<  "errore " << endl;
     error();
-  }
-
-  if(line.find("#") != string::npos){
-      int commentIndex = line.find("#");
-      line = line.substr(0,commentIndex);
   }
 
   int startOfLine = 0;
@@ -486,8 +488,22 @@ int main(int argc, char const *argv[]) {
   bool isCondition = false;
   bool isIf = false;  
   
+  // input file
   infile.open(argv[1]);
-  outfile.open(argv[2]);
+  
+  // output file
+  string inputFileName = argv[1];
+  int positionOfDot = inputFileName.length();
+  for(int i=0; i < inputFileName.length(); i++){
+    if(inputFileName[i] == '.'){
+      positionOfDot = i;
+      break;
+    }
+  }
+  outputFileName = inputFileName.substr(0, positionOfDot) + ".ll";
+  outfile.open(outputFileName);
+  
+  // temp file
   afterAllocation.open("a.txt", ios::in | ios::out| ios::trunc);
 
   outfile << "; ModuleID = 'mylang2ir'" << endl;
@@ -496,7 +512,7 @@ int main(int argc, char const *argv[]) {
   outfile << "define i32 @main() {" << endl;
 
   while(getline(infile, line)) {
-    nofLines++;
+    
     line = fixLine(line);
   
     if(line.find("print")!= string::npos) { // içinde statement ya da choose varsa hesapla yoksa direkt yaz 
@@ -539,26 +555,39 @@ int main(int argc, char const *argv[]) {
       isIf = false;
       nofConditions++;
     }else if(line.find("}") != string::npos && isCondition == false){          // arka arkaya iki } için
-      outfile << "}, false" << endl;
+      //outfile << "}, false" << endl;
+       cout <<  "errorb " << endl;
       error();
+      
     }else if(line.find("{") != string::npos && isCondition == true){           // nested if-while için
-      outfile << "{,true" << endl;
+      //outfile << "{,true" << endl;
+       cout <<  "errorc " << endl;
       error();
-    }else{
+    }else if (!line.empty()){
+       cout <<  "errord " << endl;
       error(); 
-    }                                                                          // zaten en son else diyeceğiz. yukarıdaki errorlere gerek var mı?
-
+      
+    }                        
+                                                    // zaten en son else diyeceğiz. yukarıdaki errorlere gerek var mı?
+    nofLines++;
   }
+ 
   if(isCondition){
+    nofLines--;
+    cout <<  "errora " << endl;
      error();
   }
+
   string x;
   afterAllocation << "ret i32 0" << endl;
   afterAllocation << "}" << endl;
   afterAllocation.seekg(0, ios::beg);
+  
   while(getline(afterAllocation, x)){
     outfile << x << endl;
   }
+  
   afterAllocation.clear();
   afterAllocation.close();
+  remove("a.txt");
 }
