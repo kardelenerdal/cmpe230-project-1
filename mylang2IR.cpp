@@ -63,8 +63,9 @@ string inToPost(string infix) {
          stk.push('^');
       else if(*it == ')') {
          while(stk.top() != '#' && stk.top() != '(') {
-              postfix += " ";
+            postfix += " ";
             postfix += stk.top(); //store and pop until ( has found
+            postfix += " ";
             stk.pop();
          }
          stk.pop();          //remove the '(' from stack
@@ -73,6 +74,7 @@ string inToPost(string infix) {
             stk.push(*it); //push if precedence is high
          else {
             while(stk.top() != '#' && preced(*it) <= preced(stk.top())) {
+
               postfix += " ";
                postfix += stk.top();        //store and pop until higher precedence is found
                stk.pop();
@@ -83,6 +85,7 @@ string inToPost(string infix) {
    }
 
    while(stk.top() != '#') {
+      postfix += " ";
       postfix += stk.top();        //store and pop until stack is not empty.
       postfix += " ";    
       stk.pop();
@@ -103,6 +106,7 @@ int preced(char ch) {
 }
 
 bool isOperator(string str){
+  //cout << str <<"operatır"<<endl;
   if(str == "+" || str == "-" || str == "/" || str == "*") {
     return true;
   }
@@ -111,13 +115,13 @@ bool isOperator(string str){
 
 string spaceCheck(string str){
     
-    string noSpace = "";
+    /*string noSpace = "";
     for (int i=0; i<str.length(); i++) {
         if (!isspace(str[i])){
           noSpace+=str[i];
         } 
     }
-    str = noSpace;
+    str = noSpace;*/
 
     int len = str.length();
     for(int i = 0; i < len; i++){
@@ -154,6 +158,7 @@ void error(){
 }
 
 vector<string> chooseParser(string a){
+
     int len = 0;
     int realFirstIndex = 0;
     int realLastIndex = 0;
@@ -161,7 +166,8 @@ vector<string> chooseParser(string a){
     for(int i = 0; i < a.length(); i++){
        if(string(1, a[i]) == "c" && string(1, a[i+1]) == "h" && string(1, a[i+2]) == "o" && string(1, a[i+3]) == "o" && string(1, a[i+4]) == "s" && string(1, a[i+5]) == "e"){
             realFirstIndex = i;
-            for(int j = i+7; j < a.length(); j++){
+            for(int j = i+6; j < a.length(); j++){
+              
                 if(string(1, a[j]) == "("){
                     nofParenthes++;
                 }else if(string(1, a[j]) == ")"){
@@ -208,12 +214,12 @@ vector<string> chooseParser(string a){
         firstIndex = virgulIndex + 1;
       }
     }
-   // for(int i = 0; i < parList.size(); i++){
-     //   std::cout << "c"<<parList[i] <<"c"<< std::endl;
-  // }
+   //for(int i = 0; i < parList.size(); i++){
+     //  cout << "c"<<parList[i] <<"c"<< std::endl;
+ // }
     if(parList.size() != 4){
       //outfile << "choose list" << endl;
-       cout <<  "errork " << endl;
+       cout <<  "errork "<<parList.size() << endl;
       error();
     }
     return parList;
@@ -222,6 +228,7 @@ vector<string> chooseParser(string a){
 string choose(string line){
 
       vector<string> parameters = chooseParser(line);
+      
       string par1Name = expression(false, parameters[0]);
       string firstConditionName = "%t" + to_string(nofTempVariables);
       afterAllocation << firstConditionName << " = icmp eq i32 " << par1Name << ", 0" << endl;
@@ -250,7 +257,7 @@ string choose(string line){
 // @return: a vector that contains the tokens in the line
 vector<string> expressionParser(bool equal, string line){  
   
-  while(line.find("choose") != string::npos){
+    while(line.find("choose") != string::npos){
     
     int chooseFirstIndex = line.find("choose");
     int chooseLastIndex = 0;
@@ -310,9 +317,27 @@ vector<string> expressionParser(bool equal, string line){
         token = strtok(NULL,delim);
     }
     
-    string postfix = inToPost(rightSide);
+    string noSpace = "";
+    for (int i=0; i<rightSide.length(); i++) {
+      string s (1, rightSide[i]);
+      
+        if(isOperator(s) || rightSide[i] == '='){
+          noSpace += " ";
+          noSpace += rightSide[i];
+          noSpace += " ";
+          
+        } else if (!isspace(rightSide[i])){
 
- /*   int startOfPos = 0;
+          noSpace += rightSide[i];
+        } 
+    }
+   
+    rightSide = noSpace;
+   
+    string postfix = inToPost(rightSide);
+    
+
+    int startOfPos = 0;
     int endOfPos = 0;
     for (int i=0; i<postfix.length(); i++) {
         if (!isspace(postfix[i])){
@@ -326,7 +351,8 @@ vector<string> expressionParser(bool equal, string line){
           break;
         }
     }
-    postfix = postfix.substr(startOfPos, endOfPos - startOfPos + 1);*/
+    postfix = postfix.substr(startOfPos, endOfPos - startOfPos + 1);
+    
 
     stringstream test(postfix);    
     string segment;
