@@ -12,7 +12,7 @@ using namespace std;
 // global variables
 int nofTempVariables = 1;
 int nofConditions = 1;
-int nofLines = 0;
+int nofLines = -1;
 string line;
 string outputFileName = "";
 set<string> variables;
@@ -42,12 +42,12 @@ string expression(bool equal, string expr);
 void printStatement(string s);
 string fixLine(string line);
 
-
+// takes a string as an infix and returns its postfix form
 string inToPost(string infix) {
   
    stack<char> stk;
-   stk.push('#');               //add some extra character to avoid underflow
-   string postfix = "";         //initially the postfix string is empty
+   stk.push('#');               
+   string postfix = "";         
    string::iterator it;
 
    for(it = infix.begin(); it!=infix.end(); it++) {
@@ -56,7 +56,7 @@ string inToPost(string infix) {
           continue;
       }
       if(isalnum(char(*it)) || *it == '%'){
-         postfix += *it;      //add to postfix when character is letter or number
+         postfix += *it;      
       }else if(*it == '(')
          stk.push('(');
       else if(*it == '^')
@@ -64,19 +64,18 @@ string inToPost(string infix) {
       else if(*it == ')') {
          while(stk.top() != '#' && stk.top() != '(') {
             postfix += " ";
-            postfix += stk.top(); //store and pop until ( has found
+            postfix += stk.top();
             postfix += " ";
             stk.pop();
          }
-         stk.pop();          //remove the '(' from stack
+         stk.pop();          
       }else {
          if(preced(*it) > preced(stk.top()))
-            stk.push(*it); //push if precedence is high
+            stk.push(*it); 
          else {
             while(stk.top() != '#' && preced(*it) <= preced(stk.top())) {
-
               postfix += " ";
-               postfix += stk.top();        //store and pop until higher precedence is found
+               postfix += stk.top();       
                stk.pop();
             }
             stk.push(*it);
@@ -86,13 +85,14 @@ string inToPost(string infix) {
 
    while(stk.top() != '#') {
       postfix += " ";
-      postfix += stk.top();        //store and pop until stack is not empty.
+      postfix += stk.top();
       postfix += " ";    
       stk.pop();
    }
    return postfix;
 }
 
+// precedence method for turning infix to postfix
 int preced(char ch) {
    if(ch == '+' || ch == '-') {
       return 1;              
@@ -105,14 +105,15 @@ int preced(char ch) {
    }
 }
 
-bool isOperator(string str){
-  //cout << str <<"operatır"<<endl;
+// returns true if the given string is an operator, else returns false
+bool isOperator(string str) {
   if(str == "+" || str == "-" || str == "/" || str == "*") {
     return true;
   }
   return false;
 }
 
+// removes the unnecessary spaces and puts space before and after any operator
 string spaceCheck(string str){
 
     string noSpace = "";
@@ -125,30 +126,13 @@ string spaceCheck(string str){
           noSpace += " ";
           
         } else if (!isspace(str[i])){
-
           noSpace += str[i];
         } 
     }
     return noSpace;
-
-    /*int len = str.length();
-    for(int i = 0; i < len; i++){
-        stringstream ss;
-        string target;
-        char mychar = str[i];
-        ss << mychar;
-        ss >> target;
-
-        if(isOperator(target) || target == "="){
-            str.insert(i+1, " ");
-            str.insert(i, " ");
-            i += 2;
-            len += 2;
-        }
-    }
-    return str; */
 }
 
+// prints an error statement to the output file
 void error(){
   
   remove(outputFileName.c_str());
@@ -165,6 +149,8 @@ void error(){
 
 }
 
+// takes the choose line as an input and divides its parameters and returns the vector that contaions the parameters of choose
+// if there are more or less parameters than 4, then it gives an error
 vector<string> chooseParser(string a){
 
     int len = 0;
@@ -190,8 +176,8 @@ vector<string> chooseParser(string a){
        }
     }
     len = realLastIndex - realFirstIndex + 1;
-    a = a.substr(realFirstIndex, len);    // strigi sadece chooselu kısıma çeviriyor
-    
+    a = a.substr(realFirstIndex, len);    
+
     int insertPoint = a.find_last_of(")");
     a.insert(insertPoint, ",");
     vector<string> parList;
@@ -222,17 +208,14 @@ vector<string> chooseParser(string a){
         firstIndex = virgulIndex + 1;
       }
     }
-   //for(int i = 0; i < parList.size(); i++){
-     //  cout << "c"<<parList[i] <<"c"<< std::endl;
- // }
+   
     if(parList.size() != 4){
-      //outfile << "choose list" << endl;
-       cout <<  "errork "<<parList.size() << endl;
       error();
     }
     return parList;
 }
 
+// writes the conditions and selects statements for the choose function
 string choose(string line){
 
       vector<string> parameters = chooseParser(line);
@@ -326,24 +309,6 @@ vector<string> expressionParser(bool equal, string line){
     }
    
     string postfix = inToPost(rightSide);
-    cout << rightSide<<endl;
-
-    int startOfPos = 0;
-    int endOfPos = 0;
-    for (int i=0; i<postfix.length(); i++) {
-        if (!isspace(postfix[i])){
-          break;
-        } 
-        startOfPos++;
-    }
-    for (int i=postfix.length()-1; i>=0; i--) {
-        if (!isspace(postfix[i])){
-          endOfPos = i;
-          break;
-        }
-    }
-    postfix = postfix.substr(startOfPos, endOfPos - startOfPos + 1);
-    
 
     stringstream test(postfix);    
     string segment;
@@ -428,7 +393,6 @@ string loadVariable(string s){
   nofTempVariables++;
   return tempVariableName;
 }
-
 
 // does the assignment line
 void assignment(string leftName, string value){
@@ -643,26 +607,27 @@ int main(int argc, char const *argv[]) {
 
   while(getline(infile, line)) {
     
+    nofLines++;
     line = fixLine(line);
   
-    if(line.find("print")!= string::npos) { // içinde statement ya da choose varsa hesapla yoksa direkt yaz 
-
+    if(line.find("print")!= string::npos) { 
+      // printten once, parantezle arada, ) dan sonra bisey varsa error
       int startIndex = line.find_first_of("(")+1;
       int endIndex = line.find_last_of(")");
       string exprToPrint = line.substr(startIndex, endIndex - startIndex);
       
       printStatement(exprToPrint);
 
-    } else if(line.find("while")!= string::npos && isCondition == false) {  //cond da statement hesapla
-      
+    } else if(line.find("while")!= string::npos && isCondition == false) { 
+      // whileden once, parantezle arada, parantezle } arasında, } dan sonra bisey varsa, } yoksa error
       int startIndex = line.find("(") + 1;
       int endIndex = line.find_last_of(")");
       string exprToCheck = line.substr(startIndex, endIndex - startIndex);
       condition(exprToCheck);  
       isCondition = true;
     
-    } else if(line.find("if")!= string::npos && isCondition == false) {  //cond da statement hesapla 
-      
+    } else if(line.find("if")!= string::npos && isCondition == false) { 
+      // ifden once, parantezle arada, parantezle } arasında, } dan sonra bisey varsa, } yoksa error
       int startIndex = line.find("(") + 1;
       int endIndex = line.find_last_of(")");
       string exprToCheck = line.substr(startIndex, endIndex - startIndex);
@@ -670,12 +635,12 @@ int main(int argc, char const *argv[]) {
       isIf = true;
       isCondition = true;
 
-    } else if(line.find('=')!= string::npos) {   // sağı hesapla sola koy
+    } else if(line.find('=')!= string::npos) {   
       
       expression(true, line);  
 
-    }else if(line.find("}") != string::npos && isCondition == true){
-      
+    } else if(line.find("}") != string::npos && isCondition == true){
+      // }dan once ve sonra bisey varsa error
       if(!isIf){
         afterAllocation << "br label %cond" << nofConditions << endl; //br label %whcond
       } else {
@@ -685,28 +650,20 @@ int main(int argc, char const *argv[]) {
       isCondition = false;  
       isIf = false;
       nofConditions++;
-    }else if(line.find("}") != string::npos && isCondition == false){          // arka arkaya iki } için
-      //outfile << "}, false" << endl;
-       cout <<  "errorb " << endl;
+    
+    } else if(line.find("}") != string::npos && isCondition == false){          // when there is no condiiton }
       error();
-      
-    }else if(line.find("{") != string::npos && isCondition == true){           // nested if-while için
-      //outfile << "{,true" << endl;
-       cout <<  "errorc " << endl;
+    } else if(line.find("{") != string::npos && isCondition == true){           // nested if-while
       error();
-    }else if (!line.empty()){
-       cout <<  "errord " << endl;
+    } else if (!line.empty()){
       error(); 
       
     }                        
-                                                    // zaten en son else diyeceğiz. yukarıdaki errorlere gerek var mı?
-    nofLines++;
   }
  
   if(isCondition){
     nofLines--;
-    cout <<  "errora " << endl;
-     error();
+    error();
   }
 
   string x;
@@ -721,4 +678,5 @@ int main(int argc, char const *argv[]) {
   afterAllocation.clear();
   afterAllocation.close();
   remove("a.txt");
+  return 0;
 }
