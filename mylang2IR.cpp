@@ -115,7 +115,23 @@ bool isOperator(string str){
 
 string spaceCheck(string str){
 
-    int len = str.length();
+    string noSpace = "";
+    for (int i=0; i<str.length(); i++) {
+        string s (1, str[i]);
+      
+        if(isOperator(s) || str[i] == '='){
+          noSpace += " ";
+          noSpace += str[i];
+          noSpace += " ";
+          
+        } else if (!isspace(str[i])){
+
+          noSpace += str[i];
+        } 
+    }
+    return noSpace;
+
+    /*int len = str.length();
     for(int i = 0; i < len; i++){
         stringstream ss;
         string target;
@@ -130,7 +146,7 @@ string spaceCheck(string str){
             len += 2;
         }
     }
-    return str; 
+    return str; */
 }
 
 void error(){
@@ -308,26 +324,9 @@ vector<string> expressionParser(bool equal, string line){
         }
         token = strtok(NULL,delim);
     }
-    
-    string noSpace = "";
-    for (int i=0; i<rightSide.length(); i++) {
-        string s (1, rightSide[i]);
-      
-        if(isOperator(s) || rightSide[i] == '='){
-          noSpace += " ";
-          noSpace += rightSide[i];
-          noSpace += " ";
-          
-        } else if (!isspace(rightSide[i])){
-
-          noSpace += rightSide[i];
-        } 
-    }
-   
-    rightSide = noSpace;
    
     string postfix = inToPost(rightSide);
-    
+    cout << rightSide<<endl;
 
     int startOfPos = 0;
     int endOfPos = 0;
