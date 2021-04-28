@@ -114,14 +114,6 @@ bool isOperator(string str){
 }
 
 string spaceCheck(string str){
-    
-    /*string noSpace = "";
-    for (int i=0; i<str.length(); i++) {
-        if (!isspace(str[i])){
-          noSpace+=str[i];
-        } 
-    }
-    str = noSpace;*/
 
     int len = str.length();
     for(int i = 0; i < len; i++){
@@ -319,7 +311,7 @@ vector<string> expressionParser(bool equal, string line){
     
     string noSpace = "";
     for (int i=0; i<rightSide.length(); i++) {
-      string s (1, rightSide[i]);
+        string s (1, rightSide[i]);
       
         if(isOperator(s) || rightSide[i] == '='){
           noSpace += " ";
