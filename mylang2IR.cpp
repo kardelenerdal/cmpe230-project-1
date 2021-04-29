@@ -140,7 +140,7 @@ void error(){
   outfile.open(outputFileName.c_str());
   outfile << "; ModuleID = 'mylang2ir'" << endl;
   outfile << "declare i32 @printf(i8*, ...)" << endl;
-  outfile << "@print.error = constant [24 x i8] c\"Line %d\\0A\\00 : syntax error\"" << endl;
+  outfile << "@print.error = constant [24 x i8] c\"Line %d: syntax error\\0A\\00 \"" << endl;
   outfile << "define i32 @main() {" << endl;
   outfile << "call i32 (i8*, ...)* @printf(i8* getelementptr ([24 x i8]* @print.error, i32 0, i32 0), i32 "<< nofLines << " )"<< endl;
   outfile << "ret i32 0" << endl;
@@ -610,7 +610,11 @@ int main(int argc, char const *argv[]) {
     nofLines++;
     line = fixLine(line);
   
-    if(line.find("print")!= string::npos) { 
+    if(line.find('=')!= string::npos) {   
+      
+      expression(true, line);  
+
+    } else if(line.find("print")!= string::npos) { 
       // printten once, parantezle arada, ) dan sonra bisey varsa error
       int startIndex = line.find_first_of("(")+1;
       int endIndex = line.find_last_of(")");
@@ -635,10 +639,6 @@ int main(int argc, char const *argv[]) {
       isIf = true;
       isCondition = true;
 
-    } else if(line.find('=')!= string::npos) {   
-      
-      expression(true, line);  
-
     } else if(line.find("}") != string::npos && isCondition == true){
       // }dan once ve sonra bisey varsa error
       if(!isIf){
@@ -662,7 +662,6 @@ int main(int argc, char const *argv[]) {
   }
  
   if(isCondition){
-    nofLines--;
     error();
   }
 
