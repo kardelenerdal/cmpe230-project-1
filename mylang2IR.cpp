@@ -588,7 +588,7 @@ int main(int argc, char const *argv[]) {
   // output file
   string inputFileName = argv[1];
   int positionOfDot = inputFileName.length();
-  for(int i=0; i < inputFileName.length(); i++){
+  for(int i=inputFileName.length()-1; i >= 0; i--){
     if(inputFileName[i] == '.'){
       positionOfDot = i;
       break;
