@@ -176,7 +176,11 @@ vector<string> chooseParser(string a){
        }
     }
     len = realLastIndex - realFirstIndex + 1;
-    a = a.substr(realFirstIndex, len);    
+    a = a.substr(realFirstIndex, len);   
+
+    if(a.find('=') != string::npos) {
+       error();
+    } 
 
     int insertPoint = a.find_last_of(")");
     a.insert(insertPoint, ",");
@@ -417,7 +421,9 @@ string handleVariable(string var){
   if(var[0] == '%' || isNumber(var)){
       vartemp = var;
   } else if(isVariable(var)){
-    
+    if(var == "if" || var == "while" || var == "print") {
+      error();
+    }
     if(exists("%"+var)){
       vartemp = loadVariable("%"+var);
     } else {
@@ -614,14 +620,11 @@ int main(int argc, char const *argv[]) {
     
     nofLines++;
     line = fixLine(line);
-  
-    if(line.find('=')!= string::npos) {   
-      
-      expression(true, line);  
-
-    } else if(line.substr(0,5) == "print") { // line.find("print")!= string::npos
+     if(line.substr(0,5) == "print") { // line.find("print")!= string::npos
       // printten once, parantezle arada, ) dan sonra bisey varsa error
-
+      if(line.find('=') != string::npos) {
+        error();
+      }
       int startIndex = line.find_first_of("(")+1;
       int paranthesesCounter = 1;
       int endIndex = 0;
@@ -651,6 +654,10 @@ int main(int argc, char const *argv[]) {
 
     } else if(line.substr(0, 5) == "while" && isCondition == false) { // line.find("while")!= string::npos
       // whileden once, parantezle arada, parantezle } arasında, } dan sonra bisey varsa, } yoksa error
+    
+      if(line.find('=') != string::npos) {
+       error();
+      }
 
       int startIndex = line.find_first_of("(")+1;
       int paranthesesCounter = 1;
@@ -695,7 +702,9 @@ int main(int argc, char const *argv[]) {
     
     } else if(line.substr(0,2) == "if" && isCondition == false) { // line.find("if")!= string::npos 
       // ifden once, parantezle arada, parantezle } arasında, } dan sonra bisey varsa, } yoksa error
-
+      if(line.find('=') != string::npos) {
+       error();
+      }
       int startIndex = line.find_first_of("(")+1;
       int paranthesesCounter = 1;
       int endIndex = 0;
@@ -755,6 +764,10 @@ int main(int argc, char const *argv[]) {
       isIf = false;
       nofConditions++;
     
+    } else if(line.find('=')!= string::npos) {   
+      
+      expression(true, line);  
+
     } else if (!line.empty()){
       error(); 
     }                        
