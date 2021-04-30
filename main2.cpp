@@ -5,25 +5,49 @@
 #include <stack>
 #include <locale>
 #include <cstring>
-#include <vector>
 #include <sstream>
+
 using namespace std;
 
+// global variables
 int nofTempVariables = 1;
 int nofConditions = 1;
-
+int nofLines = -1;
 string line;
+string outputFileName = "";
 set<string> variables;
 ifstream infile;            
 ofstream outfile;
+fstream afterAllocation;
 
+// methods
 int preced(char ch);
 string expression(bool equal, string expr);
+string inToPost(string infix);
+bool isOperator(string str);
+string spaceCheck(string str);
+void error();
+vector<string> chooseParser(string a);
+string choose(string line);
+vector<string> expressionParser(bool equal, string line);
+void condition(string expres);
+bool exists(string str);
+bool isNumber(string str);
+void storeVariable(string target, string value);
+void allocateVariable(string s);
+string loadVariable(string s);
+void assignment(string leftName, string value);
+string handleVariable(string var);
+string expression(bool equal, string expr);
+void printStatement(string s);
+string fixLine(string line);
 
-string inToPost(string infix ) {
+// takes a string as an infix and returns its postfix form
+string inToPost(string infix) {
+  
    stack<char> stk;
-   stk.push('#');               //add some extra character to avoid underflow
-   string postfix = "";         //initially the postfix string is empty
+   stk.push('#');               
+   string postfix = "";         
    string::iterator it;
 
    for(it = infix.begin(); it!=infix.end(); it++) {
@@ -31,25 +55,27 @@ string inToPost(string infix ) {
           postfix += " ";
           continue;
       }
-      if(isalnum(char(*it))){
-         postfix += *it;      //add to postfix when character is letter or number
+      if(isalnum(char(*it)) || *it == '%'){
+         postfix += *it;      
       }else if(*it == '(')
          stk.push('(');
       else if(*it == '^')
          stk.push('^');
       else if(*it == ')') {
          while(stk.top() != '#' && stk.top() != '(') {
-              postfix += " ";
-            postfix += stk.top(); //store and pop until ( has found
+            postfix += " ";
+            postfix += stk.top();
+            postfix += " ";
             stk.pop();
          }
-         stk.pop();          //remove the '(' from stack
+         stk.pop();          
       }else {
          if(preced(*it) > preced(stk.top()))
-            stk.push(*it); //push if precedence is high
+            stk.push(*it); 
          else {
             while(stk.top() != '#' && preced(*it) <= preced(stk.top())) {
-               postfix += stk.top();        //store and pop until higher precedence is found
+              postfix += " ";
+               postfix += stk.top();       
                stk.pop();
             }
             stk.push(*it);
@@ -58,83 +84,259 @@ string inToPost(string infix ) {
    }
 
    while(stk.top() != '#') {
-      postfix += stk.top();        //store and pop until stack is not empty.
+      postfix += " ";
+      postfix += stk.top();
       postfix += " ";    
       stk.pop();
    }
-   //cout << postfix << endl;
    return postfix;
 }
 
+// precedence method for turning infix to postfix
 int preced(char ch) {
    if(ch == '+' || ch == '-') {
-      return 1;              //Precedence of + or - is 1
+      return 1;              
    }else if(ch == '*' || ch == '/') {
-      return 2;            //Precedence of * or / is 2
+      return 2;            
    }else if(ch == '^') {
-      return 3;            //Precedence of ^ is 3
+      return 3;            
    }else {
       return 0;
    }
 }
 
-std::vector<std::string> expressionParser(bool equal, string line){  
+// returns true if the given string is an operator, else returns false
+bool isOperator(string str) {
+  if(str == "+" || str == "-" || str == "/" || str == "*") {
+    return true;
+  }
+  return false;
+}
+
+// removes the unnecessary spaces and puts space before and after any operator
+string spaceCheck(string str){
+
+    string noSpace = "";
+    for (int i=0; i<str.length(); i++) {
+        string s (1, str[i]);
+      
+        if(isOperator(s) || str[i] == '='){
+          noSpace += " ";
+          noSpace += str[i];
+          noSpace += " ";
+          
+        } else if (!isspace(str[i])){
+          noSpace += str[i];
+        } 
+    }
+    return noSpace;
+}
+
+// prints an error statement to the output file
+void error(){
+  
+  remove(outputFileName.c_str());
+  outfile.close();
+  outfile.open(outputFileName.c_str());
+  outfile << "; ModuleID = 'mylang2ir'" << endl;
+  outfile << "declare i32 @printf(i8*, ...)" << endl;
+  outfile << "@print.error = constant [24 x i8] c\"Line %d: syntax error\\0A\\00 \"" << endl;
+  outfile << "define i32 @main() {" << endl;
+  outfile << "call i32 (i8*, ...)* @printf(i8* getelementptr ([24 x i8]* @print.error, i32 0, i32 0), i32 "<< nofLines << " )"<< endl;
+  outfile << "ret i32 0" << endl;
+  outfile << "}" << endl;
+  exit(0);
+
+}
+
+// takes the choose line as an input and divides its parameters and returns the vector that contaions the parameters of choose
+// if there are more or less parameters than 4, then it gives an error
+vector<string> chooseParser(string a){
+
+    int len = 0;
+    int realFirstIndex = 0;
+    int realLastIndex = 0;
+    int nofParenthes = 0;
+    for(int i = 0; i < a.length(); i++){
+       if(string(1, a[i]) == "c" && string(1, a[i+1]) == "h" && string(1, a[i+2]) == "o" && string(1, a[i+3]) == "o" && string(1, a[i+4]) == "s" && string(1, a[i+5]) == "e"){
+            realFirstIndex = i;
+            for(int j = i+6; j < a.length(); j++){
+              
+                if(string(1, a[j]) == "("){
+                    nofParenthes++;
+                }else if(string(1, a[j]) == ")"){
+                    nofParenthes--;
+                    if(nofParenthes == 0){
+                      realLastIndex = j;
+                      break;
+                    }
+                }
+            }
+            break;
+       }
+    }
+    len = realLastIndex - realFirstIndex + 1;
+    a = a.substr(realFirstIndex, len);    
+
+    int insertPoint = a.find_last_of(")");
+    a.insert(insertPoint, ",");
+    vector<string> parList;
     
+    bool firstTime = true;
+    nofParenthes = 0;
+    int virgulIndex = 0;
+    int lastIndex = 0;
+    int firstIndex = 0;
+    len = 0;
+    for(int i = 0; i < a.length(); i++){
+      if(string(1, a[i]) == "(" && firstTime == true){
+           firstTime = false;
+           firstIndex = i + 1;
+           continue;
+       }
+       if(string(1, a[i]) == "(" && firstTime == false){
+           nofParenthes++;
+       } 
+      if(string(1, a[i]) == ")" && firstTime == false){
+           nofParenthes--;
+       }
+      if(string(1, a[i]) == "," && nofParenthes == 0 && firstTime == false){
+        virgulIndex = i;
+        lastIndex = virgulIndex - 1;
+        len = lastIndex - firstIndex + 1;
+        parList.push_back(a.substr(firstIndex, len));
+        firstIndex = virgulIndex + 1;
+      }
+    }
+   
+    if(parList.size() != 4){
+      error();
+    }
+    return parList;
+}
+
+// writes the conditions and selects statements for the choose function
+string choose(string line){
+
+      vector<string> parameters = chooseParser(line);
+      
+      string par1Name = expression(false, parameters[0]);
+      string firstConditionName = "%ttempp" + to_string(nofTempVariables);
+      afterAllocation << firstConditionName << " = icmp eq i32 " << par1Name << ", 0" << endl;
+      nofTempVariables++;
+      
+      string par2Name = expression(false, parameters[1]);
+      string secondConditionName = "%ttempp" + to_string(nofTempVariables);
+      afterAllocation << secondConditionName << " = icmp sgt i32 " << par1Name << ", 0" << endl;
+      nofTempVariables++;
+    
+      string par3Name = expression(false, parameters[2]);
+      string par4Name = expression(false, parameters[3]);
+      string elseName = "%ttempp" + to_string(nofTempVariables);
+      afterAllocation << elseName << " = select i1 " << secondConditionName << ", i32 " << par3Name << ", i32 " << par4Name << endl;
+      nofTempVariables++;
+      string chooseName = "%ttempp" + to_string(nofTempVariables);
+      afterAllocation << chooseName << " = select i1 " << firstConditionName << ", i32 " << par2Name << ", i32 " << elseName << endl;
+      nofTempVariables++;
+
+      return chooseName;
+  }
+
+// one of the main functions of this program
+// @param equal: true if line contains =, else false
+// @param line: the line that needs to be parsed
+// @return: a vector that contains the tokens in the line
+vector<string> expressionParser(bool equal, string line){  
+  
+    while(line.find("choose") != string::npos){
+    
+    int chooseFirstIndex = line.find("choose");
+    int chooseLastIndex = 0;
+    bool inChoose = false;
+    int nofParantheses = 0;
+    for(int i=0; i<line.length(); i++){
+      if(i == chooseFirstIndex){
+        inChoose = true;
+        i+=5;
+        continue;
+      }
+      if(inChoose){
+        if(line[i] == '('){
+          nofParantheses++;
+        } else if(line[i] == ')'){
+          nofParantheses--;
+          if(nofParantheses == 0){
+            chooseLastIndex = i;
+            break;
+          }
+        } else if(nofParantheses == 0 && !isspace(line[i])){
+          error();
+        }
+      }
+    }
+    string chooseName = choose(line);
+    string result = line.substr(0, chooseFirstIndex) + " " + chooseName + " " + line.substr(chooseLastIndex+1);
+    line = result;
+  }
+
+    line = spaceCheck(line);
     int l = line.length();
     char str[l+1];
     strcpy(str, line.c_str());
+
     char delim[] = " ";
     char *token = strtok(str, delim);
-    //bool equal = false; equal variable'ını parametre olarak aldık, eğer printse bu değer true olarak gelecek ve sol tarafı hesaplamamamıza gerek kalmayacak. Diğer türlü durumda false gelecek.
-    
+
     string leftSide = "";
     string rightSide = "";
-
-    while (token)
-    {
-      //cout << token << endl;
+    int leftSideCounter = 0;
+    while (token) {
+      
         if(strcmp(token, "=") == 0){
             equal = true;
         }else if(equal == false){
-            leftSide = token; 
-        }else if(equal == true){
+            if(leftSideCounter != 0){
+              error();              
+            }
+            leftSide = token;
+            leftSideCounter++; 
+        }else if(equal == true && token != " "){
             rightSide += token;
             rightSide += " ";
         }
         token = strtok(NULL,delim);
     }
-    //cout << rightSide << endl;
-    
-    string postfix = inToPost(rightSide); 
-    //cout << postfix << endl;
-    std::stringstream test(postfix);    // postfix'i space karakterinden sonra parçalamak için kullanılan değişkenler.
-    std::string segment;
-    std::vector<std::string> seglist;   
+   
+    string postfix = inToPost(rightSide);
+    stringstream test(postfix);    
+    string segment;
+    vector<string> seglist;   
   
-    seglist.push_back(leftSide);      // leftSide değişkenini return edeceğimiz vector'ün 0. indexine koyduk. 
-                 //  handleVariable() (bu işi expression da halledelim?)  
-    while(std::getline(test, segment, ' '))  // vector'ün içine postfixteki(rightSide) elemanları atıyor.
+    seglist.push_back(leftSide);    
+                  
+    while(getline(test, segment, ' '))  
     {
-        if(segment != ""){
+        if(segment != "" && segment != " ") {
+          
             seglist.push_back(segment);
         }        
     }
+
     return seglist;
 }
 
+// writes the condition's first part
 void condition(string expres){
-  // nofTempVar ? 
-  outfile << "br label %" << "cond" << nofConditions << endl;
-  outfile << "cond" << nofConditions << ":" << endl;
+  afterAllocation << "br label %" << "cond" << nofConditions << endl;
+  afterAllocation << "cond" << nofConditions << ":" << endl;
   string conditionTemp = expression(false, expres);
-  outfile << "%t" << nofTempVariables << " = icmp ne i32 " << conditionTemp  << ", 0" << endl;        // %t2 = icmp ne i32 %t1, 0
-  outfile << "br i1 %t" << nofTempVariables << ", label %body" << nofConditions << ", label %end" << nofConditions << endl;  
+  afterAllocation << "%ttempp" << nofTempVariables << " = icmp ne i32 " << conditionTemp  << ", 0" << endl;        // %t2 = icmp ne i32 %t1, 0
+  afterAllocation << "br i1 %ttempp" << nofTempVariables << ", label %body" << nofConditions << ", label %end" << nofConditions << endl;  
   nofTempVariables++; 
-  //br i1 %t2, label %whbody, label %whend
-  outfile << "body" << nofConditions << ":" << endl;   //whbody:
+  afterAllocation << "body" << nofConditions << ":" << endl;   //whbody:
 }
 
-// bu variable daha once tanımlanmış mı
+// returns true if the given variable has been allocated before, else returns false
 bool exists(string str){
   if(variables.find(str) == variables.end()){
     return false;
@@ -142,174 +344,241 @@ bool exists(string str){
   return true;
 }
 
-bool isOperator(string str){
-  if(str == "+" || str == "-" || str == "/" || str == "*") {
-    return true;
-  }
-  return false;
-}
-
+// returns true if the given string is a number, else returns false
 bool isNumber(string str){
+  
   for(int i=0; i<str.length(); i++){
     if(str[i] > '9' || str[i] < '0'){
       return false;
     }
   }
+  
   return true;
 }
 
-// bu functiondan cok emin değilim
+// returns true if the given string is a valid variable name, else returns false
 bool isVariable(string str){
-  // first character is always a letter
-  // the rest can be letter or number
+  
   if(!isalpha(str[0])){
     return false;
   }
+ 
   for(int i=1; i<str.length(); i++){
     if(!isalnum(str[i])){
       return false;
     }
   }
+  
   return true;
 }
 
+// stores a value in the given variable
 void storeVariable(string target, string value){
-  outfile << "store i32 " << value << ", i32* " << target << endl;
+  afterAllocation << "store i32 " << value << ", i32* " << target << endl;
 }
+
+// allocates a variable, puts the variable inside the variable set so that checking if a variable does exist becomes easy
 void allocateVariable(string s) {
   variables.insert(s);
   outfile << s << " = alloca i32" << endl;
-  storeVariable(s, "0");
+  outfile << "store i32 " << 0 << ", i32* " << s << endl;
 }
+
+// loads an existing variable and returns its temp name
 string loadVariable(string s){
-  string tempVariableName = "%t" + to_string(nofTempVariables);
-  outfile << tempVariableName << " = load i32* " << s << endl;
+  string tempVariableName = "%ttempp" + to_string(nofTempVariables);
+  afterAllocation << tempVariableName << " = load i32* " << s << endl;
   nofTempVariables++;
   return tempVariableName;
 }
 
-
-
+// does the assignment line
 void assignment(string leftName, string value){
-    
-  // yoksa allocate et varsa bir şey yapmıyoruz
+  
+  if(!isVariable(leftName)) {
+    error();
+  }
+  
   string leftVariableName = "%" + leftName;
+  
   if(!exists(leftVariableName)) {
     allocateVariable(leftVariableName);
   } 
-  // sola koy (store et)
+  
   storeVariable(leftVariableName, value); 
-
 }
 
-//chooseFunction();
-//whileStatement();
-//ifStatement();
-
-// variable varsa load et yoksa allocate et numbersa ya da tempse bişey yapma
+// takes the variable and if it exists, loads it; if not, allocates and if neither is required returns the variable as it is
+// if the parameter is none of them, then it is an error
 string handleVariable(string var){
+
   string vartemp = "";
+  
   if(var[0] == '%' || isNumber(var)){
-        vartemp = var;
-    } else if(isVariable(var)){
-      // daha once varsa load et yoksa allocate et
-      if(exists("%"+var)){
-          vartemp = loadVariable("%"+var);
-      } else {
-        allocateVariable("%"+var);
-        vartemp = loadVariable("%"+var);
-      }
+      vartemp = var;
+  } else if(isVariable(var)){
+    
+    if(exists("%"+var)){
+      vartemp = loadVariable("%"+var);
+    } else {
+      allocateVariable("%"+var);
+      vartemp = loadVariable("%"+var);
     }
+  
+  } else {
+    error();
+  }
     return vartemp;
 }
 
+// one of the main functions of the program, takes the line and evaluates it
+// @param expr: the whole line
+// @param equal: if the line includes = true, else false
+// @return: the name of the temp variable that holds the whole expression
 string expression(bool equal, string expr) {
-  // equal true ise gelen line'da = var ve assignment yapıyor, false ise = yok
-  // expr = a+2*x/(5-z)+(2/y)
+
   vector<string> postfixVector = expressionParser(!equal, expr);
   stack<string> postfixVersion;
   stack<string> waitList;
-
-  // postfixe çevirme
-  for(int i=postfixVector.size()-1; i>0; i--) {   // ilk indexi almadım çünkü o left variable
+  
+  for(int i=postfixVector.size()-1; i>0; i--) {
       postfixVersion.push(postfixVector[i]);
   }
-  // postfixVersion = a2x*5z-/+2y/+  a'dan başlarayak çıkıcak.
-
-    if(postfixVersion.size() == 1) {     // expression sadece 1 variablesa
+    
+    if(postfixVersion.size() == 1) {     
+      
       string token = postfixVersion.top();
       postfixVersion.pop();
       string result = handleVariable(token);
+      
       // assignment
-      if (equal) {
+      if(equal){
         assignment(postfixVector[0], result);
       }
       return result;
     }
    
+   // does the computations here
     while(!postfixVersion.empty()){
-
+      
       string token = postfixVersion.top();
       postfixVersion.pop();
-
-      if(isVariable(token) || isNumber(token)){
+      
+      if(isVariable(token) || isNumber(token) || token[0] == '%'){
         
         waitList.push(token);
 
-      } else if(isOperator(token)){
-
+      } else if(isOperator(token)) {
+        if(waitList.size() < 2) {
+          error();
+        }
         string var1 = waitList.top();
-        string var1temp = "";
+        string var1temp = handleVariable(var1);
         waitList.pop();
         string var2 = waitList.top();
-        string var2temp = ""; 
+        string var2temp = handleVariable(var2);
         waitList.pop();
-
-        var1temp = handleVariable(var1);
-        var2temp = handleVariable(var2);
-
+        
         if(token == "+"){
-
-          string resultName = "%t" + to_string(nofTempVariables);            //nofTempVar nerde increment oluyor?
-           cout << resultName << endl;
-          outfile << resultName << " = add i32 " << var2temp << ", " << var1temp << endl;
+          
+          string resultName = "%ttempp" + to_string(nofTempVariables);
+          afterAllocation << resultName << " = add i32 " << var2temp << ", " << var1temp << endl;
           waitList.push(resultName);
 
         } else if(token == "-"){
 
-          string resultName = "%t" + to_string(nofTempVariables);
-          outfile << resultName << " = sub i32 " << var2temp << ", " << var1temp << endl;
+          string resultName = "%ttempp" + to_string(nofTempVariables);
+          afterAllocation << resultName << " = sub i32 " << var2temp << ", " << var1temp << endl;
           waitList.push(resultName);
         
         } else if(token == "/"){
           
-          string resultName = "%t" + to_string(nofTempVariables);
-          outfile << resultName << " = udiv i32 " << var2temp << ", " << var1temp << endl;
+          string resultName = "%ttempp" + to_string(nofTempVariables);
+          afterAllocation << resultName << " = sdiv i32 " << var2temp << ", " << var1temp << endl;
           waitList.push(resultName);
 
         } else if(token == "*"){
-          string resultName = "%t" + to_string(nofTempVariables);
-          outfile << resultName << " = mul i32 " << var1temp << ", " << var2temp << endl;
+
+          string resultName = "%ttempp" + to_string(nofTempVariables);
+          afterAllocation << resultName << " = mul i32 " << var1temp << ", " << var2temp << endl;
           waitList.push(resultName);
         }
         
         nofTempVariables++;
       
+      } else {
+        error();
       }
     }
+
+    if(waitList.empty()){
+      error();
+    }
     
-    // assignment yapıyor
     if (equal) {
-      assignment(postfixVector[0], waitList.top());
+      string result = handleVariable(waitList.top());
+      waitList.pop();
+      assignment(postfixVector[0], result);
+      return "";
+    }
+    
+    string result = waitList.top();
+    waitList.pop();
+    
+    if(!waitList.empty()) {
+      error();
     }
 
-    return waitList.top();
+    return result;
 }
 
+// takes the line as a whole and evaluates it in the expression function and prints the print line 
 void printStatement(string s){
-  // islemler
   string variableName = expression(false, s);
-  outfile << "call i32 (i8*, ...)* @printf(i8* getelementptr ([4 x i8]* @print.str, i32 0, i32 0), i32 " << variableName << " )" << endl;
+  afterAllocation << "call i32 (i8*, ...)* @printf(i8* getelementptr ([4 x i8]* @print.str, i32 0, i32 0), i32 " << variableName << " )" << endl;
+}
+
+// removes the comments, counts the number of parantheses and if there is a syntax error, goes to error function
+// removes the spaces at the end and beginning of the line
+// returns the modified line
+string fixLine(string line){
+   
+  if(line.find("#") != string::npos){
+    int commentIndex = line.find("#");
+    line = line.substr(0, commentIndex);
+  }
+
+  int nofParanthesis = 0;
+  for(int i = 0 ; i < line.length(); i++){
+    if(nofParanthesis < 0){
+      error();
+    }
+    if(string(1, line[i]) == "("){
+      nofParanthesis++;
+    }else if(string(1, line[i]) == ")"){
+      nofParanthesis--;
+    }
+  }
+  
+  if(nofParanthesis != 0){
+    error();
+  }
+
+  int startOfLine = 0;
+  int endOfLine = 0;
+  for (int i=0; i<line.length(); i++) {
+        if (!isspace(line[i])){
+          break;
+        } 
+        startOfLine++;
+  }
+   for (int i=line.length()-1; i>=0; i--) {
+        if (!isspace(line[i])){
+          endOfLine = i;
+          break;
+        }
+  }
+  return line.substr(startOfLine, endOfLine - startOfLine + 1);
 }
 
 int main(int argc, char const *argv[]) {
@@ -317,8 +586,24 @@ int main(int argc, char const *argv[]) {
   bool isCondition = false;
   bool isIf = false;  
   
+  // input file
   infile.open(argv[1]);
-  outfile.open(argv[2]);
+  
+  // output file
+  string inputFileName = argv[1];
+  int positionOfDot = inputFileName.length();
+  
+  for(int i=inputFileName.length()-1; i >= 0; i--){
+    if(inputFileName[i] == '.'){
+      positionOfDot = i;
+      break;
+    }
+  }
+  outputFileName = inputFileName.substr(0, positionOfDot) + ".ll";
+  outfile.open(outputFileName);
+  
+  // temp file
+  afterAllocation.open("a.txt", ios::in | ios::out| ios::trunc);
 
   outfile << "; ModuleID = 'mylang2ir'" << endl;
   outfile << "declare i32 @printf(i8*, ...)" << endl;
@@ -326,54 +611,170 @@ int main(int argc, char const *argv[]) {
   outfile << "define i32 @main() {" << endl;
 
   while(getline(infile, line)) {
-
-
-    // one line or multiple line
     
-    // one line
-    if(line.find("print")!= string::npos) { // içinde statement ya da choose varsa hesapla yoksa direkt yaz 
+    nofLines++;
+    line = fixLine(line);
+  
+    if(line.find('=')!= string::npos) {   
+      
+      expression(true, line);  
 
-      int startIndex = line.find("print") + 6;
-      int endIndex = line.find_last_of(")");
+    } else if(line.substr(0,5) == "print") { // line.find("print")!= string::npos
+      // printten once, parantezle arada, ) dan sonra bisey varsa error
+
+      int startIndex = line.find_first_of("(")+1;
+      int paranthesesCounter = 1;
+      int endIndex = 0;
+      for(int i=5; i<startIndex-1; i++){
+        if(!isspace(line[i])){
+          error();
+        }
+      }
+      for(int i=startIndex; i<line.length(); i++){
+        if(line[i] == '('){
+          paranthesesCounter++;
+        } else if(line[i] == ')'){
+          paranthesesCounter--;
+          if(paranthesesCounter == 0){
+            endIndex = i;
+            break;
+          }
+        }
+      }
+      for(int i=endIndex+1; i<line.length(); i++){
+        if(!isspace(line[i])){
+          error();
+        }
+      }
       string exprToPrint = line.substr(startIndex, endIndex - startIndex);
-      //cout << exprToPrint << endl;
       printStatement(exprToPrint);
 
-    } else if(line.find("while")!= string::npos && isCondition == false) {  //cond da statement hesapla
-      int startIndex = line.find("(") + 1;
-      int endIndex = line.find_last_of(")");
+    } else if(line.substr(0, 5) == "while" && isCondition == false) { // line.find("while")!= string::npos
+      // whileden once, parantezle arada, parantezle } arasında, } dan sonra bisey varsa, } yoksa error
+
+      int startIndex = line.find_first_of("(")+1;
+      int paranthesesCounter = 1;
+      int endIndex = 0;
+      for(int i=5; i<startIndex-1; i++){
+        if(!isspace(line[i])){           // if there is anything, other than space, between while and ()
+          error();
+        }
+      }
+      for(int i=startIndex; i<line.length(); i++){
+        if(line[i] == '('){
+          paranthesesCounter++;
+        } else if(line[i] == ')'){
+          paranthesesCounter--;
+          if(paranthesesCounter == 0){
+            endIndex = i;
+            break;
+          }
+        }
+      }
+      int curlyBraceIndex = 0;
+      for(int i=endIndex+1; i<line.length(); i++){
+        if(line[i] == '{'){
+          curlyBraceIndex = i;
+          break;
+        } else if(!isspace(line[i])) {   // if there is anything, other than space, between ) and {
+          error();
+        }
+      }
+      if(curlyBraceIndex == 0){  // if there is no }
+        error();
+      }
+      for(int i=curlyBraceIndex+1; i<line.length(); i++){
+        if(!isspace(line[i])){        // if there is anything, other than space, after {
+          error();
+        }
+      }
+
       string exprToCheck = line.substr(startIndex, endIndex - startIndex);
       condition(exprToCheck);  
       isCondition = true;
     
-    } else if(line.find("if")!= string::npos && isCondition == false) {  //cond da statement hesapla 
-      
-      int startIndex = line.find("(") + 1;
-      int endIndex = line.find_last_of(")");
+    } else if(line.substr(0,2) == "if" && isCondition == false) { // line.find("if")!= string::npos 
+      // ifden once, parantezle arada, parantezle } arasında, } dan sonra bisey varsa, } yoksa error
+
+      int startIndex = line.find_first_of("(")+1;
+      int paranthesesCounter = 1;
+      int endIndex = 0;
+      for(int i=2; i<startIndex-1; i++){
+        if(!isspace(line[i])){           // if there is anything, other than space, between if and ()
+          error();
+        }
+      }
+      for(int i=startIndex; i<line.length(); i++){
+        if(line[i] == '('){
+          paranthesesCounter++;
+        } else if(line[i] == ')'){
+          paranthesesCounter--;
+          if(paranthesesCounter == 0){
+            endIndex = i;
+            break;
+          }
+        }
+      }
+      int curlyBraceIndex = 0;
+      for(int i=endIndex+1; i<line.length(); i++){
+        if(line[i] == '{'){
+          curlyBraceIndex = i;
+          break;
+        } else if(!isspace(line[i])) {   // if there is anything, other than space, between ) and {
+          error();
+        }
+      }
+      if(curlyBraceIndex == 0){  // if there is no }
+        error();
+      }
+      for(int i=curlyBraceIndex+1; i<line.length(); i++){
+        if(!isspace(line[i])){        // if there is anything, other than space, after {
+          error();
+        }
+      }
+     
       string exprToCheck = line.substr(startIndex, endIndex - startIndex);
       condition(exprToCheck); 
       isIf = true;
       isCondition = true;
 
-    } else if(line.find('=')!= string::npos) {   // sağı hesapla sola koy
-      
-      expression(true, line);  
-
-    }else if(line.find("}") != string::npos && isCondition == true){
-      
-      if(!isIf){
-        outfile << "br label %cond" << nofConditions << endl; //br label %whcond
-      } else {
-        outfile << "br label %end" << nofConditions << endl;
+    } else if(line.substr(0,1) == "}" && isCondition == true){ // line.find("}") != string::npos
+      // }dan once ve sonra bisey varsa error
+      for(int i=1; i<line.length(); i++){
+        if(!isspace(line[i])){
+          error();
+        }
       }
-      outfile << "end" << nofConditions << ":" << endl;     //whend:
+      if(!isIf){
+        afterAllocation << "br label %cond" << nofConditions << endl; //br label %whcond
+      } else {
+        afterAllocation << "br label %end" << nofConditions << endl;
+      }
+      afterAllocation << "end" << nofConditions << ":" << endl;     //whend:
       isCondition = false;  
       isIf = false;
       nofConditions++;
-    }
-
+    
+    } else if (!line.empty()){
+      error(); 
+    }                        
+  }
+ 
+  if(isCondition){
+    error();
   }
 
-  outfile << "ret i32 0" << endl;
-  outfile << "}" << endl;
+  string x;
+  afterAllocation << "ret i32 0" << endl;
+  afterAllocation << "}" << endl;
+  afterAllocation.seekg(0, ios::beg);
+  
+  while(getline(afterAllocation, x)){
+    outfile << x << endl;
+  }
+  
+  afterAllocation.clear();
+  afterAllocation.close();
+  remove("a.txt");
+  return 0;
 }
