@@ -43,6 +43,7 @@ void printStatement(string s);
 string fixLine(string line);
 
 // takes a string as an infix and returns its postfix form
+// this function is an improved form of Arjun Thakur's code from the website tutorialspoint.com
 string inToPost(string infix) {
   
    stack<char> stk;
@@ -94,6 +95,7 @@ string inToPost(string infix) {
 }
 
 // precedence method for turning infix to postfix
+// this function is Arjun Thakur's code from the website tutorialspoint.com
 int preced(char ch) {
    if(ch == '+' || ch == '-') {
       return 1;              
@@ -175,6 +177,9 @@ vector<string> chooseParser(string a){
             }
             break;
        }
+    }
+    if(realLastIndex == 0){
+      error();
     }
     len = realLastIndex - realFirstIndex + 1;
     a = a.substr(realFirstIndex, len);   
@@ -422,7 +427,7 @@ string handleVariable(string var){
   if(var[0] == '%' || isNumber(var)){
       vartemp = var;
   } else if(isVariable(var)){
-    if(var == "if" || var == "while" || var == "print") {
+    if(var == "if" || var == "while" || var == "print" || var == "choose") {
       error();
     }
     if(exists("%"+var)){
@@ -621,8 +626,8 @@ int main(int argc, char const *argv[]) {
     
     nofLines++;
     line = fixLine(line);
-     if(line.substr(0,5) == "print") { // line.find("print")!= string::npos
-      // printten once, parantezle arada, ) dan sonra bisey varsa error
+     if(line.substr(0,5) == "print") {
+      
       if(line.find('=') != string::npos) {
         error();
       }
@@ -653,9 +658,8 @@ int main(int argc, char const *argv[]) {
       string exprToPrint = line.substr(startIndex, endIndex - startIndex);
       printStatement(exprToPrint);
 
-    } else if(line.substr(0, 5) == "while" && isCondition == false) { // line.find("while")!= string::npos
-      // whileden once, parantezle arada, parantezle } arasında, } dan sonra bisey varsa, } yoksa error
-    
+    } else if(line.substr(0, 5) == "while" && isCondition == false) { 
+      
       if(line.find('=') != string::npos) {
        error();
       }
@@ -701,8 +705,8 @@ int main(int argc, char const *argv[]) {
       condition(exprToCheck);  
       isCondition = true;
     
-    } else if(line.substr(0,2) == "if" && isCondition == false) { // line.find("if")!= string::npos 
-      // ifden once, parantezle arada, parantezle } arasında, } dan sonra bisey varsa, } yoksa error
+    } else if(line.substr(0,2) == "if" && isCondition == false) {
+     
       if(line.find('=') != string::npos) {
        error();
       }
@@ -748,19 +752,19 @@ int main(int argc, char const *argv[]) {
       isIf = true;
       isCondition = true;
 
-    } else if(line.substr(0,1) == "}" && isCondition == true){ // line.find("}") != string::npos
-      // }dan once ve sonra bisey varsa error
+    } else if(line.substr(0,1) == "}" && isCondition == true){ 
+     
       for(int i=1; i<line.length(); i++){
         if(!isspace(line[i])){
           error();
         }
       }
       if(!isIf){
-        afterAllocation << "br label %cond" << nofConditions << endl; //br label %whcond
+        afterAllocation << "br label %cond" << nofConditions << endl; 
       } else {
         afterAllocation << "br label %end" << nofConditions << endl;
       }
-      afterAllocation << "end" << nofConditions << ":" << endl;     //whend:
+      afterAllocation << "end" << nofConditions << ":" << endl;     
       isCondition = false;  
       isIf = false;
       nofConditions++;
